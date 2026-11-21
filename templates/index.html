@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>EduRAG - Asistente Académico</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f5f9;
+            margin: 0;
+            padding: 40px;
+            color: #253047;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+        }
+
+        h1 {
+            color: #2457a6;
+        }
+
+        input, button {
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        button {
+            background: #2457a6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #173d79;
+        }
+
+        .message {
+            background: #fff3cd;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+
+        .page {
+            background: #f3f5f9;
+            padding: 15px;
+            margin-top: 12px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+
+        .stats {
+            color: #2457a6;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>EduRAG</h1>
+
+    <p>Tu asistente académico inteligente.</p>
+
+    <div class="card">
+
+        <h2>Cargar documento académico</h2>
+
+        <p>
+            Selecciona un archivo PDF para analizar su contenido.
+        </p>
+
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+
+            <input
+                type="file"
+                name="document"
+                accept=".pdf,application/pdf"
+                required
+            >
+
+            <br>
+
+            <button type="submit">
+                Procesar documento
+            </button>
+
+        </form>
+
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <div class="message">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endwith %}
+
+    {% if filename %}
+
+    <div class="card">
+
+        <h2>Documento procesado</h2>
+
+        <p><strong>Archivo:</strong> {{ filename }}</p>
+
+        <p class="stats">
+            Páginas con texto: {{ total_pages }}
+        </p>
+
+        <p class="stats">
+            Caracteres extraídos: {{ total_characters }}
+        </p>
+
+    </div>
+
+    <div class="card">
+
+        <h2>Contenido extraído</h2>
+
+        {% for page in extracted_pages %}
+
+            <div class="page">
+
+                <strong>Página {{ page.page }}</strong>
+
+                <p>{{ page.content }}</p>
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>
