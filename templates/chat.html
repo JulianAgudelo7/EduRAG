@@ -1,0 +1,343 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduRAG | Asistente Académico</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f6fb;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            color: #1e3a8a;
+            font-size: 32px;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 16px;
+        }
+
+        .chat-card {
+            background: white;
+            border-radius: 18px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 20px 25px;
+            background: #1e3a8a;
+            color: white;
+        }
+
+        .chat-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .chat-header p {
+            margin: 8px 0 0;
+            font-size: 14px;
+            color: #dbeafe;
+        }
+
+        .chat-content {
+            padding: 30px;
+        }
+
+        .message {
+            margin-bottom: 25px;
+        }
+
+        .message-label {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .user-message {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .user-bubble {
+            background: #1e3a8a;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 18px 18px 4px 18px;
+            max-width: 80%;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .assistant-message {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .assistant-bubble {
+            background: #f1f5f9;
+            color: #1e293b;
+            padding: 20px;
+            border-radius: 18px 18px 18px 4px;
+            width: 100%;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .sources {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .sources h3 {
+            margin-top: 0;
+            font-size: 17px;
+        }
+
+        .sources ul {
+            margin-bottom: 0;
+            padding-left: 22px;
+        }
+
+        .sources li {
+            margin-bottom: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .input-area {
+            border-top: 1px solid #e2e8f0;
+            padding: 25px;
+            background: #ffffff;
+        }
+
+        .input-area form {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        textarea {
+            flex: 1;
+            resize: vertical;
+            min-height: 60px;
+            max-height: 250px;
+            padding: 15px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 16px;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        button {
+            border: none;
+            background: #2563eb;
+            color: white;
+            padding: 0 25px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 15px;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .footer {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 13px;
+            margin-top: 25px;
+        }
+
+        @media (max-width: 650px) {
+            .container {
+                margin: 15px auto;
+                padding: 12px;
+            }
+
+            .header h1 {
+                font-size: 26px;
+            }
+
+            .chat-content {
+                padding: 20px;
+            }
+
+            .input-area {
+                padding: 15px;
+            }
+
+            .input-area form {
+                flex-direction: column;
+            }
+
+            button {
+                min-height: 50px;
+            }
+
+            .user-bubble {
+                max-width: 95%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header class="header">
+            <h1>EduRAG</h1>
+            <p>Asistente académico inteligente basado en tus documentos</p>
+        </header>
+
+        <main class="chat-card">
+
+            <div class="chat-header">
+                <h2>Conversación académica</h2>
+                <p>Pregunta y consulta información de tus documentos PDF.</p>
+            </div>
+
+            <div class="chat-content">
+
+                {% if question %}
+                <div class="message user-message">
+                    <div class="user-bubble">{{ question }}</div>
+                </div>
+                {% endif %}
+
+                {% if answer %}
+                <div class="message assistant-message">
+                    <div class="assistant-bubble">
+                        <div class="message-label">EduRAG</div>
+                        {{ answer }}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if sources %}
+                <div class="sources">
+                    <h3>Fuentes consultadas</h3>
+
+                    <ul>
+                        {% for source in sources %}
+                        <li>
+                            {{ source.filename }} — Página {{ source.page }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if not answer and not question %}
+                <div class="assistant-message">
+                    <div class="assistant-bubble">
+                        <div class="message-label">EduRAG</div>
+                        ¡Hola! Estoy listo para ayudarte a comprender,
+                        analizar y consultar la información de tus
+                        documentos académicos. Escribe tu pregunta
+                        para comenzar.
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+
+            <div class="input-area">
+
+                <form action="/ask" method="POST" id="chat-form">
+
+                    <textarea
+                        name="question"
+                        id="question"
+                        placeholder="Escribe tu pregunta aquí..."
+                        required
+                    ></textarea>
+
+                    <button type="submit" id="send-button">
+                        Enviar
+                    </button>
+
+                </form>
+
+                <div class="loading" id="loading">
+                    EduRAG está procesando tu pregunta...
+                </div>
+
+            </div>
+
+        </main>
+
+        <div class="footer">
+            EduRAG · Asistente Académico Inteligente
+        </div>
+
+    </div>
+
+    <script>
+        const form = document.getElementById("chat-form");
+        const button = document.getElementById("send-button");
+        const loading = document.getElementById("loading");
+        const textarea = document.getElementById("question");
+
+        form.addEventListener("submit", function () {
+            button.disabled = true;
+            button.textContent = "Procesando...";
+            loading.classList.add("active");
+        });
+    </script>
+
+</body>
+</html>

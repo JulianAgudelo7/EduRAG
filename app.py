@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 
 from backend.document_processor import extract_text_from_pdf
 from backend.vector_database import add_document_pages
+from backend.answer_generator import generate_answer
 
 app = Flask(__name__)
 
@@ -107,6 +108,34 @@ def upload_document():
         flash(f"No se pudo procesar el documento: {error}")
         return redirect(url_for("inicio"))
 
+@app.route("/chat")
+def chat():
+    return render_template("chat.html")
 
+
+@app.route("/ask", methods=["POST"])
+def ask():
+    question = request.form.get("question", "").strip()
+
+    try:
+        result = generate_answer(question)
+
+        return render_template(
+    "chat.html",
+    question=question,
+    answer=result["answer"],
+    sources=result["sources"]
+)
+
+    except Exception:
+        app.logger.exception("Error al generar respuesta")
+
+        return render_template(
+            "chat.html",
+            answer="Ocurrió un error al generar la respuesta. "
+                   "Revisa la terminal para conocer el detalle.",
+            sources=[]
+        )
+    
 if __name__ == "__main__":
     app.run(debug=True)
