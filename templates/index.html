@@ -105,6 +105,11 @@
             margin-top: 15px;
         }
 
+        .document-info p {
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+        }
+
         .document-text {
             max-height: 250px;
             overflow-y: auto;
@@ -194,6 +199,34 @@
             margin-bottom: 6px;
         }
 
+        /* FUENTES CONSULTADAS */
+
+        .sources {
+            margin-top: 18px;
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .sources h3 {
+            margin: 0 0 10px;
+            font-size: 15px;
+            color: #164a91;
+        }
+
+        .sources ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .sources li {
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #475569;
+            overflow-wrap: anywhere;
+        }
+
         #chat-form {
             display: flex;
             gap: 10px;
@@ -241,7 +274,9 @@
 
     <header>
         <h1>EduRAG</h1>
-        <p>Asistente Académico Inteligente basado en documentos PDF</p>
+        <p>
+            Asistente Académico Inteligente basado en documentos PDF
+        </p>
     </header>
 
     <main>
@@ -249,6 +284,7 @@
         <!-- CARGA DE DOCUMENTOS -->
 
         <section class="card">
+
             <h2>Cargar documento PDF</h2>
 
             <p class="description">
@@ -272,6 +308,7 @@
                 method="POST"
                 enctype="multipart/form-data"
             >
+
                 <input
                     type="file"
                     name="file"
@@ -282,46 +319,62 @@
                 <button type="submit">
                     Subir documento
                 </button>
+
             </form>
+
         </section>
 
-        <!-- INFORMACIÓN DEL DOCUMENTO -->
 
-        {% if document is defined and document %}
+        <!-- INFORMACION DEL DOCUMENTO -->
+
+        {% if filename is defined and filename %}
 
         <section class="card">
+
             <h2>Documento procesado</h2>
 
             <div class="document-info">
+
                 <p>
                     <strong>Archivo:</strong>
-                    {{ document.filename | default('Documento PDF') }}
+                    {{ filename }}
                 </p>
 
-                {% if document.pages is defined %}
                 <p>
                     <strong>Páginas:</strong>
-                    {{ document.pages }}
+                    {{ total_pages }}
                 </p>
-                {% endif %}
 
-                {% if document.characters is defined %}
                 <p>
-                    <strong>Caracteres:</strong>
-                    {{ document.characters }}
+                    <strong>Caracteres extraídos:</strong>
+                    {{ total_characters }}
                 </p>
-                {% endif %}
+
+                <p>
+                    <strong>Fragmentos indexados:</strong>
+                    {{ indexed_pages }}
+                </p>
+
             </div>
 
-            {% if document.text is defined and document.text %}
+            {% if extracted_pages is defined and extracted_pages %}
+
                 <h3>Texto extraído</h3>
-                <div class="document-text">{{ document.text }}</div>
+
+                <div class="document-text">
+                    {% for page in extracted_pages %}
+                        {{ page.content }}
+                    {% endfor %}
+                </div>
+
             {% endif %}
+
         </section>
 
         {% endif %}
 
-        <!-- ASISTENTE ACADÉMICO -->
+
+        <!-- ASISTENTE ACADEMICO -->
 
         <section class="card">
 
@@ -339,10 +392,16 @@
                 aria-live="polite"
                 aria-label="Conversación con EduRAG"
             >
-                <p class="welcome-message" id="welcome-message">
+
+                <p
+                    class="welcome-message"
+                    id="welcome-message"
+                >
                     ¡Hola! Soy EduRAG.
-                    Escribe una pregunta sobre tus documentos para comenzar.
+                    Escribe una pregunta sobre tus documentos
+                    para comenzar.
                 </p>
+
             </div>
 
             <form id="chat-form">
@@ -356,7 +415,10 @@
                     required
                 >
 
-                <button type="submit" id="send-button">
+                <button
+                    type="submit"
+                    id="send-button"
+                >
                     Preguntar
                 </button>
 
@@ -366,24 +428,29 @@
 
     </main>
 
+
     <footer>
         EduRAG | Proyecto académico de Inteligencia Artificial
     </footer>
+
 
     <!-- BIBLIOTECAS PARA MARKDOWN SEGURO -->
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
 
+
     <!-- JAVASCRIPT DEL CHAT -->
 
     <script>
+
         const chatForm = document.getElementById("chat-form");
         const questionInput = document.getElementById("question");
         const chatMessages = document.getElementById("chat-messages");
         const sendButton = document.getElementById("send-button");
 
-        function addMessage(sender, text, type) {
+
+        function addMessage(sender, text, type, sources = []) {
 
             const welcomeMessage =
                 document.getElementById("welcome-message");
@@ -404,7 +471,7 @@
             const content = document.createElement("div");
             content.className = "message-content";
 
-            // Aplicar Markdown únicamente a las respuestas de EduRAG.
+            // Aplicar Markdown solo a respuestas del asistente
             if (
                 type === "assistant" &&
                 typeof marked !== "undefined" &&
@@ -414,17 +481,79 @@
                     marked.parse(text)
                 );
             } else {
-                // Mostrar texto plano si no están las bibliotecas.
                 content.textContent = text;
             }
 
             message.appendChild(label);
             message.appendChild(content);
 
+
+            // Mostrar las fuentes utilizadas por EduRAG
+            if (
+                type === "assistant" &&
+                Array.isArray(sources) &&
+                sources.length > 0
+            ) {
+
+                const sourcesContainer =
+                    document.createElement("div");
+
+                sourcesContainer.className = "sources";
+
+                const sourcesTitle =
+                    document.createElement("h3");
+
+                sourcesTitle.textContent = "Fuentes consultadas";
+
+                sourcesContainer.appendChild(sourcesTitle);
+
+                const sourcesList =
+                    document.createElement("ul");
+
+                // Evitar fuentes duplicadas
+                const uniqueSources = new Set();
+
+                sources.forEach((source) => {
+
+                    const filename = String(
+                        source.filename || "Documento desconocido"
+                    );
+
+                    const page = String(
+                        source.page ?? "Desconocida"
+                    );
+
+                    const sourceKey = filename + "|" + page;
+
+                    if (uniqueSources.has(sourceKey)) {
+                        return;
+                    }
+
+                    uniqueSources.add(sourceKey);
+
+                    const item = document.createElement("li");
+
+                    // textContent evita interpretar nombres
+                    // de documentos como código HTML
+                    item.textContent =
+                        filename + " — Página " + page;
+
+                    sourcesList.appendChild(item);
+
+                });
+
+                sourcesContainer.appendChild(sourcesList);
+                message.appendChild(sourcesContainer);
+
+            }
+
             chatMessages.appendChild(message);
 
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            chatMessages.scrollTop =
+                chatMessages.scrollHeight;
+
         }
+
 
         chatForm.addEventListener("submit", async (event) => {
 
@@ -446,27 +575,35 @@
             try {
 
                 const response = await fetch("/ask", {
+
                     method: "POST",
+
                     headers: {
                         "Content-Type": "application/json"
                     },
+
                     body: JSON.stringify({
                         question: question
                     })
+
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
+
                     throw new Error(
                         data.error || "Error al consultar EduRAG."
                     );
+
                 }
 
+                // Mostrar respuesta y fuentes consultadas
                 addMessage(
                     "EduRAG",
                     data.answer || "No se recibió una respuesta.",
-                    "assistant"
+                    "assistant",
+                    data.sources || []
                 );
 
             } catch (error) {
@@ -484,9 +621,11 @@
                 sendButton.textContent = "Preguntar";
 
                 questionInput.focus();
+
             }
 
         });
+
     </script>
 
 </body>
