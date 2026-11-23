@@ -4,3 +4,4 @@ pypdf
 chromadb
 sentence-transformers
 groq
+flask-sqlalchemy

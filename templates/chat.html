@@ -4,339 +4,917 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduRAG | Asistente Académico</title>
+    <title>EduRAG | Chat Académico</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 
     <style>
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            margin: 0;
             font-family: Arial, Helvetica, sans-serif;
-            background: #f4f6fb;
+            background: #f1f5f9;
             color: #1e293b;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 40px auto;
+            min-height: 100vh;
             padding: 20px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 35px;
-        }
+        /* Layout principal */
 
-        .header h1 {
-            margin-bottom: 10px;
-            color: #1e3a8a;
-            font-size: 32px;
-        }
-
-        .header p {
-            color: #64748b;
-            font-size: 16px;
-        }
-
-        .chat-card {
+        .app-container {
+            max-width: 1200px;
+            height: calc(100vh - 40px);
+            min-height: 600px;
+            margin: auto;
+            display: flex;
             background: white;
-            border-radius: 18px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            border-radius: 16px;
             overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Barra lateral */
+
+        .sidebar {
+            width: 270px;
+            min-width: 270px;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 22px 18px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .sidebar-brand {
+            font-size: 23px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .new-chat-button {
+            display: block;
+            margin-top: 20px;
+            text-decoration: none;
+            background: #2563eb;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 9px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .new-chat-button:hover {
+            background: #1d4ed8;
+        }
+
+        .sidebar-section-title {
+            padding: 20px 18px 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            font-weight: bold;
+            color: #94a3b8;
+        }
+
+        .conversation-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 10px 15px;
+        }
+
+        .conversation-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .conversation-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .conversation-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px;
+            margin-bottom: 5px;
+            border-radius: 9px;
+            transition: 0.2s;
+        }
+
+        .conversation-item:hover {
+            background: #e2e8f0;
+        }
+
+        .conversation-item.active {
+            background: #dbeafe;
+        }
+
+        .conversation-link {
+            flex: 1;
+            min-width: 0;
+            text-decoration: none;
+            color: #334155;
+            padding: 10px 8px;
+            border-radius: 7px;
+        }
+
+        .conversation-item.active .conversation-link {
+            color: #1d4ed8;
+            font-weight: bold;
+        }
+
+        .conversation-title {
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .delete-button {
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .delete-button:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .sidebar-footer {
+            padding: 15px 18px;
+            border-top: 1px solid #e2e8f0;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        /* Panel principal */
+
+        .main-panel {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .chat-header {
             padding: 20px 25px;
-            background: #1e3a8a;
-            color: white;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
         }
 
-        .chat-header h2 {
-            margin: 0;
+        .chat-header h1 {
             font-size: 20px;
+            color: #1e293b;
         }
 
         .chat-header p {
-            margin: 8px 0 0;
-            font-size: 14px;
-            color: #dbeafe;
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 5px;
         }
 
+        /* Ventana de conversación */
+
         .chat-content {
+            flex: 1;
             padding: 30px;
+            min-height: 0;
+            overflow-y: auto;
+            scroll-behavior: smooth;
         }
+
+        .chat-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .chat-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .chat-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Bienvenida */
+
+        .welcome-message {
+            text-align: center;
+            padding: 70px 20px;
+        }
+
+        .welcome-message h2 {
+            color: #2563eb;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+
+        .welcome-message p {
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        /* Mensajes */
 
         .message {
             margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-items: flex-start;
         }
 
         .message-label {
+            font-size: 13px;
             font-weight: bold;
-            font-size: 14px;
-            margin-bottom: 10px;
+            color: #64748b;
+            margin-bottom: 8px;
         }
 
-        .user-message {
-            display: flex;
-            justify-content: flex-end;
-        }
+        .message-bubble {
+    padding: 15px 18px;
+    border-radius: 12px;
+    max-width: 85%;
+    min-width: 0;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    overflow: hidden;
+}
 
-        .user-bubble {
-            background: #1e3a8a;
+        .message.user .message-bubble {
+            background: #2563eb;
             color: white;
-            padding: 15px 20px;
-            border-radius: 18px 18px 4px 18px;
-            max-width: 80%;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
+            border-bottom-right-radius: 3px;
         }
 
-        .assistant-message {
-            display: flex;
-            justify-content: flex-start;
-        }
-
-        .assistant-bubble {
+        .message.assistant .message-bubble {
             background: #f1f5f9;
             color: #1e293b;
-            padding: 20px;
-            border-radius: 18px 18px 18px 4px;
-            width: 100%;
-            line-height: 1.7;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
+            border-bottom-left-radius: 3px;
         }
+
+        /* Markdown */
+
+        .markdown-content {
+            line-height: 1.7;
+        }
+
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3 {
+            margin: 18px 0 10px;
+            color: #1e293b;
+        }
+
+        .markdown-content h1 {
+            font-size: 24px;
+        }
+
+        .markdown-content h2 {
+            font-size: 21px;
+        }
+
+        .markdown-content h3 {
+            font-size: 18px;
+        }
+
+        .markdown-content p {
+            margin-bottom: 12px;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+            padding-left: 25px;
+            margin-bottom: 15px;
+        }
+
+        .markdown-content li {
+            margin-bottom: 6px;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid #2563eb;
+            padding-left: 15px;
+            color: #475569;
+            margin: 15px 0;
+        }
+
+        .markdown-content code {
+            background: #e2e8f0;
+            padding: 3px 6px;
+            border-radius: 5px;
+            font-family: Consolas, monospace;
+            font-size: 14px;
+        }
+
+       .markdown-content pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 15px;
+    border-radius: 10px;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    margin: 15px 0;
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+.markdown-content pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: #e2e8f0;
+        }
+
+        .markdown-content hr {
+            border: none;
+            border-top: 1px solid #cbd5e1;
+            margin: 20px 0;
+        }
+
+        /* Fuentes */
 
         .sources {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
+            margin-top: 15px;
+            padding: 12px 15px;
+            background: #e0f2fe;
+            border-radius: 10px;
+            max-width: 85%;
         }
 
-        .sources h3 {
-            margin-top: 0;
-            font-size: 17px;
-        }
-
-        .sources ul {
-            margin-bottom: 0;
-            padding-left: 22px;
-        }
-
-        .sources li {
+        .sources-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #0369a1;
             margin-bottom: 8px;
-            overflow-wrap: anywhere;
         }
 
-        .input-area {
+        .source-item {
+            font-size: 13px;
+            color: #334155;
+            margin-bottom: 5px;
+        }
+
+        /* Formulario */
+
+        .chat-form-container {
             border-top: 1px solid #e2e8f0;
-            padding: 25px;
-            background: #ffffff;
+            padding: 20px 25px;
+            background: white;
         }
 
-        .input-area form {
+        .chat-form {
             display: flex;
             gap: 12px;
-            align-items: stretch;
+            align-items: flex-end;
         }
 
-        textarea {
+        .chat-form textarea {
             flex: 1;
             resize: vertical;
-            min-height: 60px;
-            max-height: 250px;
-            padding: 15px;
+            min-height: 55px;
+            max-height: 180px;
             border: 1px solid #cbd5e1;
-            border-radius: 12px;
+            border-radius: 10px;
+            padding: 15px;
             font-family: inherit;
-            font-size: 16px;
+            font-size: 15px;
             outline: none;
+            transition: 0.2s;
         }
 
-        textarea:focus {
+        .chat-form textarea:focus {
             border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
 
-        button {
+        .send-button {
             border: none;
             background: #2563eb;
             color: white;
-            padding: 0 25px;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 15px 22px;
+            border-radius: 10px;
             font-weight: bold;
             cursor: pointer;
-            transition: background 0.2s;
+            height: 55px;
+            transition: 0.2s;
         }
 
-        button:hover {
+        .send-button:hover {
             background: #1d4ed8;
         }
 
-        button:disabled {
+        .send-button:disabled {
             background: #94a3b8;
             cursor: not-allowed;
         }
 
-        .loading {
+        .input-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 10px;
+        }
+
+        /* Carga */
+
+        .loading-message {
             display: none;
-            margin-top: 15px;
+            margin-bottom: 20px;
+        }
+
+        .loading-bubble {
+            display: inline-block;
+            background: #f1f5f9;
+            padding: 15px 18px;
+            border-radius: 12px;
             color: #64748b;
             font-size: 14px;
         }
 
-        .loading.active {
-            display: block;
+        .loading-dots::after {
+            content: "";
+            animation: dots 1.5s infinite;
         }
 
-        .footer {
-            text-align: center;
-            color: #94a3b8;
-            font-size: 13px;
-            margin-top: 25px;
+        @keyframes dots {
+            0% { content: ""; }
+            25% { content: "."; }
+            50% { content: ".."; }
+            75% { content: "..."; }
         }
 
-        @media (max-width: 650px) {
-            .container {
-                margin: 15px auto;
-                padding: 12px;
+        /* Móviles */
+
+        @media (max-width: 750px) {
+
+            body {
+                padding: 0;
             }
 
-            .header h1 {
-                font-size: 26px;
+            .app-container {
+                height: 100vh;
+                min-height: 0;
+                border-radius: 0;
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: 0;
+                max-height: 230px;
+                flex-shrink: 0;
+            }
+
+            .sidebar-header {
+                padding: 12px 15px;
+            }
+
+            .sidebar-brand {
+                font-size: 20px;
+            }
+
+            .sidebar-subtitle {
+                display: none;
+            }
+
+            .new-chat-button {
+                margin-top: 10px;
+                padding: 10px;
+            }
+
+            .sidebar-section-title {
+                padding: 10px 15px 5px;
+            }
+
+            .conversation-list {
+                padding: 0 10px 10px;
+            }
+
+            .sidebar-footer {
+                display: none;
+            }
+
+            .main-panel {
+                flex: 1;
+                min-height: 0;
+            }
+
+            .chat-header {
+                padding: 15px;
             }
 
             .chat-content {
                 padding: 20px;
             }
 
-            .input-area {
+            .message-bubble {
+                max-width: 95%;
+            }
+
+            .sources {
+                max-width: 95%;
+            }
+
+            .chat-form-container {
                 padding: 15px;
             }
 
-            .input-area form {
+            .chat-form {
                 flex-direction: column;
+                align-items: stretch;
             }
 
-            button {
-                min-height: 50px;
+            .chat-form textarea {
+                width: 100%;
             }
 
-            .user-bubble {
-                max-width: 95%;
+            .send-button {
+                width: 100%;
+            }
+
+            .welcome-message {
+                padding: 35px 10px;
             }
         }
+
+        .documents-link {
+    display: block;
+    text-decoration: none;
+    color: #334155;
+    padding: 10px 12px;
+    margin-top: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.documents-link:hover {
+    background: #e2e8f0;
+    color: #2563eb;
+}
+
     </style>
 </head>
 
 <body>
 
-    <div class="container">
+    <div class="app-container">
 
-        <header class="header">
-            <h1>EduRAG</h1>
-            <p>Asistente académico inteligente basado en tus documentos</p>
-        </header>
+        <!-- BARRA LATERAL -->
 
-        <main class="chat-card">
+        <aside class="sidebar">
 
-            <div class="chat-header">
-                <h2>Conversación académica</h2>
-                <p>Pregunta y consulta información de tus documentos PDF.</p>
-            </div>
+            <div class="sidebar-header">
 
-            <div class="chat-content">
-
-                {% if question %}
-                <div class="message user-message">
-                    <div class="user-bubble">{{ question }}</div>
+                <div class="sidebar-brand">
+                    EduRAG
                 </div>
-                {% endif %}
 
-                {% if answer %}
-                <div class="message assistant-message">
-                    <div class="assistant-bubble">
-                        <div class="message-label">EduRAG</div>
-                        {{ answer }}
-                    </div>
-                </div>
-                {% endif %}
+               <div class="sidebar-subtitle">
+    Asistente académico
+</div>
 
-                {% if sources %}
-                <div class="sources">
-                    <h3>Fuentes consultadas</h3>
+<a href="{{ url_for('inicio') }}" class="documents-link">
+    📄 Gestionar documentos
+</a>
 
-                    <ul>
-                        {% for source in sources %}
-                        <li>
-                            {{ source.filename }} — Página {{ source.page }}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                {% if not answer and not question %}
-                <div class="assistant-message">
-                    <div class="assistant-bubble">
-                        <div class="message-label">EduRAG</div>
-                        ¡Hola! Estoy listo para ayudarte a comprender,
-                        analizar y consultar la información de tus
-                        documentos académicos. Escribe tu pregunta
-                        para comenzar.
-                    </div>
-                </div>
-                {% endif %}
+                <a
+                    href="{{ url_for('new_chat') }}"
+                    class="new-chat-button"
+                >
+                    + Nueva conversación
+                </a>
 
             </div>
 
-            <div class="input-area">
+            <div class="sidebar-section-title">
+                Tus conversaciones
+            </div>
 
-                <form action="/ask" method="POST" id="chat-form">
+            <div class="conversation-list">
+
+                {% for conversation in conversations %}
+
+                    <div class="conversation-item
+                        {% if conversation.id == current_conversation.id %}
+                            active
+                        {% endif %}
+                    ">
+
+                        <a
+                            href="{{ url_for('chat', id=conversation.id) }}"
+                            class="conversation-link"
+                            title="{{ conversation.title }}"
+                        >
+
+                            <div class="conversation-title">
+                                {{ conversation.title }}
+                            </div>
+
+                        </a>
+
+                        <form
+                            action="{{ url_for('delete_chat', conversation_id=conversation.id) }}"
+                            method="POST"
+                            onsubmit="return confirm('¿Eliminar esta conversación?');"
+                        >
+
+                            <button
+                                type="submit"
+                                class="delete-button"
+                                title="Eliminar conversación"
+                            >
+                                &#128465;
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                {% endfor %}
+
+            </div>
+
+            <div class="sidebar-footer">
+                EduRAG · Historial local
+            </div>
+
+        </aside>
+
+
+        <!-- PANEL PRINCIPAL -->
+
+        <main class="main-panel">
+
+            <header class="chat-header">
+
+                <h1>
+                    {{ current_conversation.title }}
+                </h1>
+
+                <p>
+                    Consulta tus documentos académicos
+                </p>
+
+            </header>
+
+
+            <!-- VENTANA DE CHAT -->
+
+            <div class="chat-content" id="chat-content">
+
+                {% if history %}
+
+                    {% for message in history %}
+
+                        {% if message.role == "user" %}
+
+                            <div class="message user">
+
+                                <div class="message-label">
+                                    Tú
+                                </div>
+
+                                <div class="message-bubble">
+                                    {{ message.content }}
+                                </div>
+
+                            </div>
+
+                        {% else %}
+
+                            <div class="message assistant">
+
+                                <div class="message-label">
+                                    EduRAG
+                                </div>
+
+                                <div class="message-bubble markdown-content">
+                                    {{ message.content }}
+                                </div>
+
+                                {% if message.sources %}
+
+                                    <div class="sources">
+
+                                        <div class="sources-title">
+                                            Fuentes consultadas
+                                        </div>
+
+                                        {% for source in message.sources %}
+
+                                            <div class="source-item">
+                                                📄 {{ source.filename }}
+                                                — Página {{ source.page }}
+                                            </div>
+
+                                        {% endfor %}
+
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                        {% endif %}
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <div class="welcome-message">
+
+                        <h2>Bienvenido a EduRAG</h2>
+
+                        <p>
+                            Pregunta sobre los documentos que has cargado.
+                            <br>
+                            Estoy aquí para ayudarte a comprender su contenido.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+                <!-- INDICADOR DE CARGA -->
+
+                <div class="loading-message" id="loading-message">
+
+                    <div class="loading-bubble">
+                        EduRAG está pensando<span class="loading-dots"></span>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- FORMULARIO -->
+
+            <div class="chat-form-container">
+
+                <form
+                    action="{{ url_for('ask') }}"
+                    method="POST"
+                    class="chat-form"
+                    id="chat-form"
+                >
+
+                    <input
+                        type="hidden"
+                        name="conversation_id"
+                        value="{{ current_conversation.id }}"
+                    >
 
                     <textarea
                         name="question"
                         id="question"
                         placeholder="Escribe tu pregunta aquí..."
                         required
+                        rows="2"
                     ></textarea>
 
-                    <button type="submit" id="send-button">
+                    <button
+                        type="submit"
+                        class="send-button"
+                        id="send-button"
+                    >
                         Enviar
                     </button>
 
                 </form>
 
-                <div class="loading" id="loading">
-                    EduRAG está procesando tu pregunta...
-                </div>
+                <p class="input-hint">
+                    Enter para enviar · Shift + Enter para escribir en otra línea
+                </p>
 
             </div>
 
         </main>
 
-        <div class="footer">
-            EduRAG · Asistente Académico Inteligente
-        </div>
-
     </div>
 
-    <script>
-        const form = document.getElementById("chat-form");
-        const button = document.getElementById("send-button");
-        const loading = document.getElementById("loading");
-        const textarea = document.getElementById("question");
 
-        form.addEventListener("submit", function () {
-            button.disabled = true;
-            button.textContent = "Procesando...";
-            loading.classList.add("active");
+    <script>
+
+        // Renderizar Markdown y sanitizar contenido
+
+        document.querySelectorAll(".markdown-content").forEach(element => {
+
+            const originalContent = element.textContent;
+
+            element.innerHTML = DOMPurify.sanitize(
+                marked.parse(originalContent)
+            );
+
         });
+
+
+        // Elementos
+
+        const form = document.getElementById("chat-form");
+        const textarea = document.getElementById("question");
+        const chatContent = document.getElementById("chat-content");
+        const loadingMessage = document.getElementById("loading-message");
+        const sendButton = document.getElementById("send-button");
+
+
+        // Desplazamiento automático al último mensaje
+
+        chatContent.scrollTop = chatContent.scrollHeight;
+
+
+        // Enter para enviar y Shift + Enter para nueva línea
+
+        textarea.addEventListener("keydown", function(event) {
+
+            if (event.key === "Enter" && !event.shiftKey) {
+
+                if (event.isComposing || event.keyCode === 229) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                form.requestSubmit();
+
+            }
+
+        });
+
+
+        // Indicador de carga
+
+        form.addEventListener("submit", function() {
+
+            if (!textarea.value.trim()) {
+                return;
+            }
+
+            sendButton.disabled = true;
+            sendButton.textContent = "Enviando...";
+
+            loadingMessage.style.display = "block";
+
+            chatContent.scrollTop = chatContent.scrollHeight;
+
+        });
+
     </script>
 
 </body>

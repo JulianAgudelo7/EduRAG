@@ -22,16 +22,30 @@
             margin: auto;
         }
 
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: #2457a6;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            margin-top: 0;
+        }
+
         .card {
             background: white;
             padding: 25px;
             border-radius: 12px;
             margin-bottom: 20px;
             box-shadow: 0 3px 12px rgba(0,0,0,0.06);
-        }
-
-        h1 {
-            color: #2457a6;
         }
 
         input, button {
@@ -45,10 +59,27 @@
             border: none;
             border-radius: 6px;
             cursor: pointer;
+            transition: 0.2s;
         }
 
         button:hover {
             background: #173d79;
+        }
+
+        .chat-link {
+            display: inline-block;
+            text-decoration: none;
+            background: #2457a6;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .chat-link:hover {
+            background: #173d79;
+            transform: translateY(-1px);
         }
 
         .message {
@@ -70,6 +101,21 @@
             color: #2457a6;
             font-weight: bold;
         }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 20px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            input[type="file"] {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -77,9 +123,18 @@
 
 <div class="container">
 
-    <h1>EduRAG</h1>
+    <div class="header">
 
-    <p>Tu asistente académico inteligente.</p>
+        <div>
+            <h1>EduRAG</h1>
+            <p>Tu asistente académico inteligente.</p>
+        </div>
+
+        <a href="{{ url_for('chat') }}" class="chat-link">
+            💬 Ir al chatbot
+        </a>
+
+    </div>
 
     <div class="card">
 
