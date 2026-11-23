@@ -8,6 +8,7 @@ from werkzeug.utils import secure_filename
 from backend.document_processor import extract_text_from_pdf
 from backend.vector_database import add_document_pages
 from backend.rag_service import generate_answer
+from backend.answer_generator import generate_answer as generate_answer_with_sources
 
 app = Flask(__name__)
 
@@ -131,6 +132,41 @@ def ask_question():
         return jsonify({
             "error": "No fue posible generar la respuesta. Intenta nuevamente."
         }), 500
+@app.route("/chat", methods=["GET"])
+def chat():
+    return render_template("chat.html")
+
+
+@app.route("/chat/ask", methods=["POST"])
+def chat_ask():
+    question = request.form.get("question", "").strip()
+
+    if not question:
+        return render_template(
+            "chat.html",
+            answer="Debes escribir una pregunta.",
+            sources=[]
+        ), 400
+
+    try:
+        result = generate_answer_with_sources(question)
+
+        return render_template(
+            "chat.html",
+            question=question,
+            answer=result["answer"],
+            sources=result["sources"]
+        )
+
+    except Exception:
+        app.logger.exception("Error al generar la respuesta")
+
+        return render_template(
+            "chat.html",
+            question=question,
+            answer="No fue posible generar la respuesta. Intenta nuevamente.",
+            sources=[]
+        ), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
