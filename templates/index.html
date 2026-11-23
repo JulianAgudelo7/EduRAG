@@ -6,20 +6,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>EduRAG - Asistente Académico</title>
+    <title>EduRAG | Asistente Académico</title>
 
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f3f5f9;
-            margin: 0;
-            padding: 40px;
-            color: #253047;
+        * {
+            box-sizing: border-box;
         }
 
-        .container {
-            max-width: 900px;
-            margin: auto;
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fc;
+            color: #263247;
+        }
+
+        header {
+            background: #164a91;
+            color: white;
+            padding: 28px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0 0 10px;
+            font-size: 32px;
+        }
+
+        header p {
+            margin: 0;
+            color: #e3edff;
+        }
+
+        main {
+            max-width: 950px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
 
         .header {
@@ -31,85 +52,123 @@
             margin-bottom: 25px;
         }
 
-        h1 {
-            color: #2457a6;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            margin-top: 0;
-        }
-
         .card {
             background: white;
             padding: 25px;
+            margin-bottom: 25px;
             border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
         }
 
-        input, button {
-            padding: 12px;
-            margin-top: 12px;
+        h2 {
+            margin-top: 0;
+            color: #164a91;
         }
 
-        button {
-            background: #2457a6;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        button:hover {
-            background: #173d79;
+        .description {
+            color: #64748b;
+            line-height: 1.6;
         }
 
         .chat-link {
             display: inline-block;
             text-decoration: none;
-            background: #2457a6;
+            background: #1763c6;
             color: white;
-            padding: 12px 18px;
+            padding: 12px 22px;
             border-radius: 8px;
             font-weight: bold;
             transition: 0.2s;
         }
 
         .chat-link:hover {
-            background: #173d79;
-            transform: translateY(-1px);
+            background: #104d9d;
         }
 
-        .message {
-            background: #fff3cd;
+        input[type="file"] {
+            display: block;
+            width: 100%;
             padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-        }
-
-        .page {
-            background: #f3f5f9;
-            padding: 15px;
-            margin-top: 12px;
+            margin: 18px 0;
+            border: 1px solid #d5ddea;
             border-radius: 8px;
-            white-space: pre-wrap;
+            background: #f8fafc;
         }
 
-        .stats {
-            color: #2457a6;
+        button {
+            background: #1763c6;
+            color: white;
+            border: none;
+            padding: 12px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
             font-weight: bold;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #104d9d;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background: #e8f1ff;
+            color: #164a91;
+        }
+
+        .document-info {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .document-info p {
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .document-text {
+            max-height: 350px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+            font-size: 13px;
         }
 
         @media (max-width: 600px) {
-            body {
-                padding: 20px;
+
+            main {
+                margin: 20px auto;
             }
 
             .header {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+
+            header h1 {
+                font-size: 26px;
             }
 
             input[type="file"] {
@@ -121,95 +180,131 @@
 
 <body>
 
-<div class="container">
+    <header>
+        <h1>EduRAG</h1>
+        <p>Asistente Académico Inteligente basado en documentos PDF</p>
+    </header>
 
-    <div class="header">
+    <main>
 
-        <div>
-            <h1>EduRAG</h1>
-            <p>Tu asistente académico inteligente.</p>
+        <div class="header">
+
+            <div>
+                <h2>Gestión de documentos</h2>
+                <p class="description">
+                    Carga y procesa tus documentos académicos.
+                </p>
+            </div>
+
+            <a href="{{ url_for('chat') }}" class="chat-link">
+                💬 Ir al chatbot
+            </a>
+
         </div>
 
-        <a href="{{ url_for('chat') }}" class="chat-link">
-            💬 Ir al chatbot
-        </a>
+        <!-- CARGA DE DOCUMENTOS -->
 
-    </div>
+        <section class="card">
 
-    <div class="card">
+            <h2>Cargar documento PDF</h2>
 
-        <h2>Cargar documento académico</h2>
+            <p class="description">
+                Sube un documento académico para extraer su
+                contenido y almacenarlo en la base de datos vectorial.
+                Después podrás realizar preguntas sobre la información.
+            </p>
 
-        <p>
-            Selecciona un archivo PDF para analizar su contenido.
-        </p>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-        <form action="/upload" method="POST" enctype="multipart/form-data">
-
-            <input
-                type="file"
-                name="document"
-                accept=".pdf,application/pdf"
-                required
+            <form
+                action="{{ url_for('upload_document') }}"
+                method="POST"
+                enctype="multipart/form-data"
             >
 
-            <br>
+                <input
+                    type="file"
+                    name="document"
+                    accept=".pdf,application/pdf"
+                    required
+                >
 
-            <button type="submit">
-                Procesar documento
-            </button>
+                <button type="submit">
+                    Procesar documento
+                </button>
 
-        </form>
+            </form>
 
-    </div>
+        </section>
 
-    {% with messages = get_flashed_messages() %}
-        {% for message in messages %}
-            <div class="message">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endwith %}
 
-    {% if filename %}
+        <!-- INFORMACION DEL DOCUMENTO -->
 
-    <div class="card">
+        {% if filename is defined and filename %}
 
-        <h2>Documento procesado</h2>
+        <section class="card">
 
-        <p><strong>Archivo:</strong> {{ filename }}</p>
+            <h2>Documento procesado</h2>
 
-        <p class="stats">
-            Páginas con texto: {{ total_pages }}
-        </p>
+            <div class="document-info">
 
-        <p class="stats">
-            Caracteres extraídos: {{ total_characters }}
-        </p>
+                <p>
+                    <strong>Archivo:</strong>
+                    {{ filename }}
+                </p>
 
-    </div>
+                <p>
+                    <strong>Páginas con texto:</strong>
+                    {{ total_pages }}
+                </p>
 
-    <div class="card">
+                <p>
+                    <strong>Caracteres extraídos:</strong>
+                    {{ total_characters }}
+                </p>
 
-        <h2>Contenido extraído</h2>
-
-        {% for page in extracted_pages %}
-
-            <div class="page">
-
-                <strong>Página {{ page.page }}</strong>
-
-                <p>{{ page.content }}</p>
+                <p>
+                    <strong>Fragmentos indexados:</strong>
+                    {{ indexed_pages }}
+                </p>
 
             </div>
 
-        {% endfor %}
+            {% if extracted_pages is defined and extracted_pages %}
 
-    </div>
+                <h3>Texto extraído</h3>
 
-    {% endif %}
+                <div class="document-text">
 
-</div>
+                    {% for page in extracted_pages %}
+
+                        <strong>Página {{ page.page }}</strong>
+
+                        <p>{{ page.content }}</p>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+        {% endif %}
+
+    </main>
+
+    <footer>
+        EduRAG | Proyecto académico de Inteligencia Artificial
+    </footer>
 
 </body>
 </html>

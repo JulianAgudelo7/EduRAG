@@ -1,8 +1,17 @@
 
 import os
 import uuid
+import json
 
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash
+)
+
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 
@@ -11,9 +20,16 @@ from backend.vector_database import add_document_pages
 from backend.answer_generator import generate_answer
 
 
+# =========================
+# CONFIGURACION DE FLASK
+# =========================
+
 app = Flask(__name__)
 
-app.secret_key = "edurag-clave-local"
+app.secret_key = os.getenv(
+    "FLASK_SECRET_KEY",
+    "edurag-clave-local"
+)
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {"pdf"}
@@ -21,7 +37,7 @@ ALLOWED_EXTENSIONS = {"pdf"}
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 
-# Configuración de SQLite
+# Base de datos SQLite
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///chats.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -79,7 +95,7 @@ class Message(db.Model):
     )
 
 
-# Crear tablas automáticamente
+# Crear tablas
 with app.app_context():
     db.create_all()
 
@@ -92,13 +108,9 @@ def allowed_file(filename):
 
     return (
         "." in filename
-        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+        and filename.rsplit(".", 1)[1].lower()
+        in ALLOWED_EXTENSIONS
     )
-
-
-def get_conversation(conversation_id):
-
-    return Conversation.query.get_or_404(conversation_id)
 
 
 def get_conversation_history(conversation):
@@ -117,13 +129,14 @@ def get_conversation_history(conversation):
 
 def save_message(conversation, role, content, sources=None):
 
-    import json
-
     message = Message(
         conversation_id=conversation.id,
         role=role,
         content=content,
-        sources_json=json.dumps(sources or [], ensure_ascii=False)
+        sources_json=json.dumps(
+            sources or [],
+            ensure_ascii=False
+        )
     )
 
     db.session.add(message)
@@ -134,8 +147,6 @@ def save_message(conversation, role, content, sources=None):
 
 def get_messages_with_sources(conversation):
 
-    import json
-
     history = []
 
     for message in conversation.messages:
@@ -143,7 +154,9 @@ def get_messages_with_sources(conversation):
         history.append({
             "role": message.role,
             "content": message.content,
-            "sources": json.loads(message.sources_json or "[]")
+            "sources": json.loads(
+                message.sources_json or "[]"
+            )
         })
 
     return history
@@ -161,7 +174,7 @@ def generate_conversation_title(question):
 
 
 # =========================
-# INICIO
+# PAGINA PRINCIPAL
 # =========================
 
 @app.route("/")
@@ -171,7 +184,7 @@ def inicio():
 
 
 # =========================
-# CARGAR DOCUMENTOS
+# CARGAR DOCUMENTOS PDF
 # =========================
 
 @app.route("/upload", methods=["POST"])
@@ -216,8 +229,10 @@ def upload_document():
 
     try:
 
+        # Guardar PDF
         file.save(file_path)
 
+        # Extraer texto
         pages = extract_text_from_pdf(file_path)
 
         if not pages:
@@ -228,6 +243,7 @@ def upload_document():
 
             return redirect(url_for("inicio"))
 
+        # Indexar documento
         indexed_pages = add_document_pages(
             filename=filename,
             pages=pages,
@@ -240,8 +256,15 @@ def upload_document():
 
             return redirect(url_for("inicio"))
 
+        # Estadísticas
         total_characters = sum(
-            len(page["content"]) for page in pages
+            len(page["content"])
+            for page in pages
+        )
+
+        flash(
+            f"Documento '{filename}' procesado correctamente. "
+            f"Se indexaron {indexed_pages} fragmentos."
         )
 
         return render_template(
@@ -255,9 +278,13 @@ def upload_document():
 
     except Exception as error:
 
-        app.logger.exception("Error al procesar el documento")
+        app.logger.exception(
+            "Error al procesar el documento"
+        )
 
-        flash(f"No se pudo procesar el documento: {error}")
+        flash(
+            f"No se pudo procesar el documento: {error}"
+        )
 
         return redirect(url_for("inicio"))
 
@@ -273,21 +300,24 @@ def chat():
         Conversation.created_at.desc()
     ).all()
 
-    # Si no existe ninguna conversación, crear una
+    # Si no hay conversaciones, crear una
     if not conversations:
 
         return redirect(url_for("new_chat"))
 
     conversation_id = request.args.get("id")
 
-    # Si no se especifica, seleccionar la más reciente
+    # Seleccionar la más reciente
     if not conversation_id:
 
         conversation_id = conversations[0].id
 
-    conversation = Conversation.query.get(conversation_id)
+    conversation = db.session.get(
+        Conversation,
+        conversation_id
+    )
 
-    # Si el ID no existe, regresar a la más reciente
+    # Si el ID no existe
     if conversation is None:
 
         return redirect(
@@ -331,7 +361,14 @@ def new_chat():
 @app.route("/delete_chat/<conversation_id>", methods=["POST"])
 def delete_chat(conversation_id):
 
-    conversation = Conversation.query.get_or_404(conversation_id)
+    conversation = db.session.get(
+        Conversation,
+        conversation_id
+    )
+
+    if conversation is None:
+
+        return redirect(url_for("chat"))
 
     db.session.delete(conversation)
     db.session.commit()
@@ -356,21 +393,33 @@ def delete_chat(conversation_id):
 @app.route("/ask", methods=["POST"])
 def ask():
 
-    question = request.form.get("question", "").strip()
+    question = request.form.get(
+        "question",
+        ""
+    ).strip()
 
-    conversation_id = request.form.get("conversation_id")
+    conversation_id = request.form.get(
+        "conversation_id"
+    )
 
     if not question or not conversation_id:
 
         return redirect(url_for("chat"))
 
-    conversation = Conversation.query.get_or_404(conversation_id)
+    conversation = db.session.get(
+        Conversation,
+        conversation_id
+    )
+
+    if conversation is None:
+
+        return redirect(url_for("chat"))
 
     history = get_conversation_history(conversation)
 
     try:
 
-        # Generar respuesta usando historial previo
+        # Generar respuesta con historial
         result = generate_answer(
             question,
             history=history
@@ -395,10 +444,12 @@ def ask():
             sources
         )
 
-        # Asignar título a la primera pregunta
+        # Asignar título
         if conversation.title == "Nueva conversación":
 
-            conversation.title = generate_conversation_title(question)
+            conversation.title = generate_conversation_title(
+                question
+            )
 
             db.session.commit()
 
@@ -408,7 +459,9 @@ def ask():
 
     except Exception:
 
-        app.logger.exception("Error al generar respuesta")
+        app.logger.exception(
+            "Error al generar respuesta"
+        )
 
         save_message(
             conversation,
@@ -429,7 +482,7 @@ def ask():
 
 
 # =========================
-# EJECUCIÓN
+# EJECUCION
 # =========================
 
 if __name__ == "__main__":
