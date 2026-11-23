@@ -2,26 +2,53 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-# Modelo multilingüe: permite trabajar con español
+# Modelo multilingüe para generar embeddings
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
-# Cargar modelo de embeddings
 embedding_model = SentenceTransformer(MODEL_NAME)
 
 # Base de datos vectorial persistente
 client = chromadb.PersistentClient(path="./chroma_db")
 
-# Colección de documentos de EduRAG
+# Nueva colección para almacenar fragmentos
 collection = client.get_or_create_collection(
-    name="edurag_documents",
+    name="edurag_chunks",
     metadata={"hnsw:space": "cosine"}
 )
 
 
+def split_text(text, chunk_size=800, chunk_overlap=150):
+    """
+    Divide un texto en fragmentos con solapamiento.
+    """
+
+    if chunk_size <= 0 or not 0 <= chunk_overlap < chunk_size:
+        raise ValueError("Los parámetros de fragmentación no son válidos.")
+
+    text = text.strip()
+    chunks = []
+
+    start = 0
+
+    while start < len(text):
+        end = min(start + chunk_size, len(text))
+        chunk = text[start:end].strip()
+
+        if chunk:
+            chunks.append(chunk)
+
+        if end == len(text):
+            break
+
+        start = end - chunk_overlap
+
+    return chunks
+
+
 def add_document_pages(filename, pages, document_id):
     """
-    Convierte las páginas de un PDF en embeddings
-    y las almacena en ChromaDB.
+    Divide las páginas de un PDF en fragmentos,
+    genera embeddings y los almacena en ChromaDB.
     """
 
     ids = []
@@ -29,30 +56,30 @@ def add_document_pages(filename, pages, document_id):
     metadatas = []
 
     for page in pages:
-        content = page["content"].strip()
+        page_chunks = split_text(page["content"])
 
-        if not content:
-            continue
+        for chunk_number, chunk in enumerate(page_chunks, start=1):
+            ids.append(
+                f"{document_id}_pagina_{page['page']}_chunk_{chunk_number}"
+            )
 
-        ids.append(f"{document_id}_pagina_{page['page']}")
-        documents.append(content)
+            documents.append(chunk)
 
-        metadatas.append({
-            "filename": filename,
-            "document_id": document_id,
-            "page": page["page"]
-        })
+            metadatas.append({
+                "filename": filename,
+                "document_id": document_id,
+                "page": page["page"],
+                "chunk": chunk_number
+            })
 
     if not documents:
         return 0
 
-    # Generar embeddings y convertirlos a listas
     embeddings = embedding_model.encode(
         documents,
         convert_to_numpy=True
     ).tolist()
 
-    # Guardar o actualizar los registros
     collection.upsert(
         ids=ids,
         documents=documents,
@@ -65,8 +92,18 @@ def add_document_pages(filename, pages, document_id):
 
 def search_documents(question, results_count=3):
     """
-    Busca las páginas más relacionadas con una pregunta.
+    Busca los fragmentos más relacionados con una pregunta.
     """
+
+    total_documents = collection.count()
+
+    if total_documents == 0:
+        return {
+            "ids": [[]],
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]]
+        }
 
     question_embedding = embedding_model.encode(
         question,
@@ -75,7 +112,8 @@ def search_documents(question, results_count=3):
 
     results = collection.query(
         query_embeddings=[question_embedding],
-        n_results=min(results_count, collection.count())
+        n_results=min(results_count, total_documents),
+        include=["documents", "metadatas", "distances"]
     )
 
     return results

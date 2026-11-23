@@ -1,160 +1,632 @@
 
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>EduRAG - Asistente Académico</title>
+    <title>EduRAG | Asistente Académico Inteligente</title>
 
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f3f5f9;
-            margin: 0;
-            padding: 40px;
-            color: #253047;
+        * {
+            box-sizing: border-box;
         }
 
-        .container {
-            max-width: 900px;
-            margin: auto;
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fc;
+            color: #263247;
+        }
+
+        header {
+            background: #164a91;
+            color: white;
+            padding: 28px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0 0 10px;
+            font-size: 32px;
+        }
+
+        header p {
+            margin: 0;
+            color: #e3edff;
+        }
+
+        main {
+            max-width: 950px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
 
         .card {
             background: white;
             padding: 25px;
+            margin-bottom: 25px;
             border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
         }
 
-        h1 {
-            color: #2457a6;
+        h2 {
+            margin-top: 0;
+            color: #164a91;
         }
 
-        input, button {
+        .description {
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
             padding: 12px;
-            margin-top: 12px;
+            margin: 18px 0;
+            border: 1px solid #d5ddea;
+            border-radius: 8px;
+            background: #f8fafc;
         }
 
         button {
-            background: #2457a6;
+            background: #1763c6;
             color: white;
             border: none;
-            border-radius: 6px;
+            padding: 12px 22px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
         }
 
         button:hover {
-            background: #173d79;
+            background: #104d9d;
         }
 
-        .message {
-            background: #fff3cd;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 10px;
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
         }
 
-        .page {
-            background: #f3f5f9;
-            padding: 15px;
-            margin-top: 12px;
+        .alert {
+            padding: 12px 15px;
+            margin-bottom: 15px;
             border-radius: 8px;
+            background: #e8f1ff;
+            color: #164a91;
+        }
+
+        .document-info {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .document-info p {
+            margin: 8px 0;
+            overflow-wrap: anywhere;
+        }
+
+        .document-text {
+            max-height: 250px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* CHAT */
+
+        #chat-messages {
+            height: 350px;
+            overflow-y: auto;
+            background: #f5f7fb;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 18px;
+            margin: 20px 0;
+        }
+
+        .welcome-message {
+            color: #64748b;
+            text-align: center;
+            margin-top: 120px;
+        }
+
+        .chat-message {
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+
+        .user-message {
+            background: #dbeafe;
+            margin-left: 15%;
+        }
+
+        .assistant-message {
+            background: white;
+            border: 1px solid #e2e8f0;
+            margin-right: 10%;
+        }
+
+        .system-message {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .message-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .message-content {
+            line-height: 1.8;
+            overflow-wrap: anywhere;
+        }
+
+        .user-message .message-content,
+        .system-message .message-content {
             white-space: pre-wrap;
         }
 
-        .stats {
-            color: #2457a6;
-            font-weight: bold;
+        .assistant-message .message-content p {
+            margin: 0 0 12px;
+        }
+
+        .assistant-message .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .assistant-message .message-content ol,
+        .assistant-message .message-content ul {
+            padding-left: 25px;
+            margin: 10px 0;
+        }
+
+        .assistant-message .message-content li {
+            margin-bottom: 6px;
+        }
+
+        /* FUENTES CONSULTADAS */
+
+        .sources {
+            margin-top: 18px;
+            padding: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .sources h3 {
+            margin: 0 0 10px;
+            font-size: 15px;
+            color: #164a91;
+        }
+
+        .sources ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .sources li {
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #475569;
+            overflow-wrap: anywhere;
+        }
+
+        #chat-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        #question {
+            flex: 1;
+            min-width: 0;
+            padding: 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        #question:focus {
+            outline: 2px solid #93c5fd;
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            #chat-form {
+                flex-direction: column;
+            }
+
+            .user-message,
+            .assistant-message {
+                margin-left: 0;
+                margin-right: 0;
+            }
+
+            header h1 {
+                font-size: 26px;
+            }
         }
     </style>
 </head>
 
 <body>
 
-<div class="container">
-
-    <h1>EduRAG</h1>
-
-    <p>Tu asistente académico inteligente.</p>
-
-    <div class="card">
-
-        <h2>Cargar documento académico</h2>
-
+    <header>
+        <h1>EduRAG</h1>
         <p>
-            Selecciona un archivo PDF para analizar su contenido.
+            Asistente Académico Inteligente basado en documentos PDF
         </p>
+    </header>
 
-        <form action="/upload" method="POST" enctype="multipart/form-data">
+    <main>
 
-            <input
-                type="file"
-                name="document"
-                accept=".pdf,application/pdf"
-                required
+        <!-- CARGA DE DOCUMENTOS -->
+
+        <section class="card">
+
+            <h2>Cargar documento PDF</h2>
+
+            <p class="description">
+                Sube un documento académico para extraer su
+                contenido y almacenarlo en la base de datos vectorial.
+                Después podrás realizar preguntas sobre la información.
+            </p>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form
+                action="{{ url_for('upload_document') }}"
+                method="POST"
+                enctype="multipart/form-data"
             >
 
-            <br>
+                <input
+                    type="file"
+                    name="file"
+                    accept=".pdf,application/pdf"
+                    required
+                >
 
-            <button type="submit">
-                Procesar documento
-            </button>
+                <button type="submit">
+                    Subir documento
+                </button>
 
-        </form>
+            </form>
 
-    </div>
+        </section>
 
-    {% with messages = get_flashed_messages() %}
-        {% for message in messages %}
-            <div class="message">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endwith %}
 
-    {% if filename %}
+        <!-- INFORMACION DEL DOCUMENTO -->
 
-    <div class="card">
+        {% if filename is defined and filename %}
 
-        <h2>Documento procesado</h2>
+        <section class="card">
 
-        <p><strong>Archivo:</strong> {{ filename }}</p>
+            <h2>Documento procesado</h2>
 
-        <p class="stats">
-            Páginas con texto: {{ total_pages }}
-        </p>
+            <div class="document-info">
 
-        <p class="stats">
-            Caracteres extraídos: {{ total_characters }}
-        </p>
+                <p>
+                    <strong>Archivo:</strong>
+                    {{ filename }}
+                </p>
 
-    </div>
+                <p>
+                    <strong>Páginas:</strong>
+                    {{ total_pages }}
+                </p>
 
-    <div class="card">
+                <p>
+                    <strong>Caracteres extraídos:</strong>
+                    {{ total_characters }}
+                </p>
 
-        <h2>Contenido extraído</h2>
-
-        {% for page in extracted_pages %}
-
-            <div class="page">
-
-                <strong>Página {{ page.page }}</strong>
-
-                <p>{{ page.content }}</p>
+                <p>
+                    <strong>Fragmentos indexados:</strong>
+                    {{ indexed_pages }}
+                </p>
 
             </div>
 
-        {% endfor %}
+            {% if extracted_pages is defined and extracted_pages %}
 
-    </div>
+                <h3>Texto extraído</h3>
 
-    {% endif %}
+                <div class="document-text">
+                    {% for page in extracted_pages %}
+                        {{ page.content }}
+                    {% endfor %}
+                </div>
 
-</div>
+            {% endif %}
+
+        </section>
+
+        {% endif %}
+
+
+        <!-- ASISTENTE ACADEMICO -->
+
+        <section class="card">
+
+            <h2>Asistente académico EduRAG</h2>
+
+            <p class="description">
+                Realiza preguntas sobre los documentos cargados.
+                EduRAG buscará información relevante y utilizará
+                inteligencia artificial para generar una respuesta.
+            </p>
+
+            <div
+                id="chat-messages"
+                role="log"
+                aria-live="polite"
+                aria-label="Conversación con EduRAG"
+            >
+
+                <p
+                    class="welcome-message"
+                    id="welcome-message"
+                >
+                    ¡Hola! Soy EduRAG.
+                    Escribe una pregunta sobre tus documentos
+                    para comenzar.
+                </p>
+
+            </div>
+
+            <form id="chat-form">
+
+                <input
+                    type="text"
+                    id="question"
+                    placeholder="Escribe tu pregunta aquí..."
+                    maxlength="1000"
+                    autocomplete="off"
+                    required
+                >
+
+                <button
+                    type="submit"
+                    id="send-button"
+                >
+                    Preguntar
+                </button>
+
+            </form>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+        EduRAG | Proyecto académico de Inteligencia Artificial
+    </footer>
+
+
+    <!-- BIBLIOTECAS PARA MARKDOWN SEGURO -->
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+
+
+    <!-- JAVASCRIPT DEL CHAT -->
+
+    <script>
+
+        const chatForm = document.getElementById("chat-form");
+        const questionInput = document.getElementById("question");
+        const chatMessages = document.getElementById("chat-messages");
+        const sendButton = document.getElementById("send-button");
+
+
+        function addMessage(sender, text, type, sources = []) {
+
+            const welcomeMessage =
+                document.getElementById("welcome-message");
+
+            if (welcomeMessage) {
+                welcomeMessage.remove();
+            }
+
+            const message = document.createElement("div");
+
+            message.className =
+                "chat-message " + type + "-message";
+
+            const label = document.createElement("span");
+            label.className = "message-label";
+            label.textContent = sender;
+
+            const content = document.createElement("div");
+            content.className = "message-content";
+
+            // Aplicar Markdown solo a respuestas del asistente
+            if (
+                type === "assistant" &&
+                typeof marked !== "undefined" &&
+                typeof DOMPurify !== "undefined"
+            ) {
+                content.innerHTML = DOMPurify.sanitize(
+                    marked.parse(text)
+                );
+            } else {
+                content.textContent = text;
+            }
+
+            message.appendChild(label);
+            message.appendChild(content);
+
+
+            // Mostrar las fuentes utilizadas por EduRAG
+            if (
+                type === "assistant" &&
+                Array.isArray(sources) &&
+                sources.length > 0
+            ) {
+
+                const sourcesContainer =
+                    document.createElement("div");
+
+                sourcesContainer.className = "sources";
+
+                const sourcesTitle =
+                    document.createElement("h3");
+
+                sourcesTitle.textContent = "Fuentes consultadas";
+
+                sourcesContainer.appendChild(sourcesTitle);
+
+                const sourcesList =
+                    document.createElement("ul");
+
+                // Evitar fuentes duplicadas
+                const uniqueSources = new Set();
+
+                sources.forEach((source) => {
+
+                    const filename = String(
+                        source.filename || "Documento desconocido"
+                    );
+
+                    const page = String(
+                        source.page ?? "Desconocida"
+                    );
+
+                    const sourceKey = filename + "|" + page;
+
+                    if (uniqueSources.has(sourceKey)) {
+                        return;
+                    }
+
+                    uniqueSources.add(sourceKey);
+
+                    const item = document.createElement("li");
+
+                    // textContent evita interpretar nombres
+                    // de documentos como código HTML
+                    item.textContent =
+                        filename + " — Página " + page;
+
+                    sourcesList.appendChild(item);
+
+                });
+
+                sourcesContainer.appendChild(sourcesList);
+                message.appendChild(sourcesContainer);
+
+            }
+
+            chatMessages.appendChild(message);
+
+            chatMessages.scrollTop =
+                chatMessages.scrollHeight;
+
+        }
+
+
+        chatForm.addEventListener("submit", async (event) => {
+
+            event.preventDefault();
+
+            const question = questionInput.value.trim();
+
+            if (!question) {
+                return;
+            }
+
+            addMessage("Tú", question, "user");
+
+            questionInput.value = "";
+            questionInput.disabled = true;
+            sendButton.disabled = true;
+            sendButton.textContent = "Consultando...";
+
+            try {
+
+                const response = await fetch("/ask", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        question: question
+                    })
+
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.error || "Error al consultar EduRAG."
+                    );
+
+                }
+
+                // Mostrar respuesta y fuentes consultadas
+                addMessage(
+                    "EduRAG",
+                    data.answer || "No se recibió una respuesta.",
+                    "assistant",
+                    data.sources || []
+                );
+
+            } catch (error) {
+
+                addMessage(
+                    "Sistema",
+                    error.message,
+                    "system"
+                );
+
+            } finally {
+
+                questionInput.disabled = false;
+                sendButton.disabled = false;
+                sendButton.textContent = "Preguntar";
+
+                questionInput.focus();
+
+            }
+
+        });
+
+    </script>
 
 </body>
 </html>

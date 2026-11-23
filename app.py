@@ -1,17 +1,29 @@
-
 import os
 import uuid
 
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    jsonify
+)
 from werkzeug.utils import secure_filename
 
 from backend.document_processor import extract_text_from_pdf
 from backend.vector_database import add_document_pages
 from backend.answer_generator import generate_answer
 
+# CONFIGURACION DE FLASK
+
 app = Flask(__name__)
 
-app.secret_key = "edurag-clave-local"
+app.secret_key = os.getenv(
+    "FLASK_SECRET_KEY",
+    "edurag-clave-local"
+)
 
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {"pdf"}
@@ -28,23 +40,26 @@ def allowed_file(filename):
         and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
 
+# PAGINA PRINCIPAL
 
 @app.route("/")
 def inicio():
     return render_template("index.html")
 
+# CARGA Y PROCESAMIENTO DE PDF
 
 @app.route("/upload", methods=["POST"])
 def upload_document():
 
-    if "document" not in request.files:
+    # Debe coincidir con name="file" en index.html
+    if "file" not in request.files:
         flash("No se seleccionó ningún documento.")
         return redirect(url_for("inicio"))
 
-    file = request.files["document"]
+    file = request.files["file"]
 
-    if file.filename == "":
-        flash("Debes seleccionar un archivo.")
+    if not file.filename:
+        flash("Debes seleccionar un archivo PDF.")
         return redirect(url_for("inicio"))
 
     if not allowed_file(file.filename):
@@ -57,21 +72,22 @@ def upload_document():
         flash("El nombre del archivo no es válido.")
         return redirect(url_for("inicio"))
 
-    # Identificador único para cada carga
+    # Generar identificador único
     document_id = uuid.uuid4().hex
 
-    # Evitar sobrescribir archivos con el mismo nombre
+    # Evitar sobrescribir archivos
     stored_filename = f"{document_id}_{filename}"
+
     file_path = os.path.join(
         app.config["UPLOAD_FOLDER"],
         stored_filename
     )
 
     try:
-        # Guardar el PDF
+        # Guardar PDF
         file.save(file_path)
 
-        # Extraer el texto
+        # Extraer texto del documento
         pages = extract_text_from_pdf(file_path)
 
         if not pages:
@@ -79,7 +95,7 @@ def upload_document():
             flash("No se encontró texto extraíble en el PDF.")
             return redirect(url_for("inicio"))
 
-        # Almacenar páginas y embeddings en ChromaDB
+        # Indexar documento en ChromaDB
         indexed_pages = add_document_pages(
             filename=filename,
             pages=pages,
@@ -90,8 +106,14 @@ def upload_document():
             flash("No se encontraron páginas para indexar.")
             return redirect(url_for("inicio"))
 
+        # Calcular estadísticas
         total_characters = sum(
             len(page["content"]) for page in pages
+        )
+
+        flash(
+            f"Documento '{filename}' procesado correctamente. "
+            f"Se indexaron {indexed_pages} fragmentos."
         )
 
         return render_template(
@@ -103,39 +125,57 @@ def upload_document():
             extracted_pages=pages
         )
 
-    except Exception as error:
-        app.logger.exception("Error al procesar el documento")
-        flash(f"No se pudo procesar el documento: {error}")
+    except Exception:
+        app.logger.exception(
+            "Error al procesar el documento"
+        )
+
+        flash(
+            "No se pudo procesar el documento. "
+            "Revisa la terminal para conocer el error."
+        )
+
         return redirect(url_for("inicio"))
 
-@app.route("/chat")
-def chat():
-    return render_template("chat.html")
-
+# CHAT UNICO DE EDURAG
 
 @app.route("/ask", methods=["POST"])
-def ask():
-    question = request.form.get("question", "").strip()
+def ask_question():
+
+    data = request.get_json(silent=True) or {}
+
+    question = data.get("question", "")
+
+    if not isinstance(question, str) or not question.strip():
+        return jsonify({
+            "error": "Debes escribir una pregunta."
+        }), 400
+
+    question = question.strip()
 
     try:
+        # Generar respuesta con fuentes
         result = generate_answer(question)
 
-        return render_template(
-    "chat.html",
-    question=question,
-    answer=result["answer"],
-    sources=result["sources"]
-)
+        return jsonify({
+            "question": question,
+            "answer": result["answer"],
+            "sources": result["sources"]
+        })
 
     except Exception:
-        app.logger.exception("Error al generar respuesta")
-
-        return render_template(
-            "chat.html",
-            answer="Ocurrió un error al generar la respuesta. "
-                   "Revisa la terminal para conocer el detalle.",
-            sources=[]
+        app.logger.exception(
+            "Error al generar la respuesta"
         )
-    
+
+        return jsonify({
+            "error": (
+                "No fue posible generar la respuesta. "
+                "Intenta nuevamente."
+            )
+        }), 500
+
+# EJECUTAR APLICACION
+
 if __name__ == "__main__":
     app.run(debug=True)

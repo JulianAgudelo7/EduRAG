@@ -1,6 +1,25 @@
-
+# Entornos virtuales
 .venv/
+.venv312/
+.venv314/
+venv/
+
+# Variables de entorno y credenciales
 .env
+.env.*
+!.env.example
+
+# Archivos temporales de Python
 __pycache__/
+*.pyc
+.pytest_cache/
+
+# Base de datos vectorial local
 chroma_db/
+
+# Documentos cargados por usuarios
 uploads/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
