@@ -2,11 +2,12 @@
 import os
 import uuid
 
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 
 from backend.document_processor import extract_text_from_pdf
 from backend.vector_database import add_document_pages
+from backend.rag_service import generate_answer
 
 app = Flask(__name__)
 
@@ -107,6 +108,29 @@ def upload_document():
         flash(f"No se pudo procesar el documento: {error}")
         return redirect(url_for("inicio"))
 
+@app.route("/ask", methods=["POST"])
+def ask_question():
+    data = request.get_json(silent=True) or {}
+    question = data.get("question", "")
+
+    if not isinstance(question, str) or not question.strip():
+        return jsonify({
+            "error": "Debes escribir una pregunta."
+        }), 400
+
+    try:
+        answer = generate_answer(question.strip())
+
+        return jsonify({
+            "question": question.strip(),
+            "answer": answer
+        })
+
+    except Exception:
+        app.logger.exception("Error al generar la respuesta")
+        return jsonify({
+            "error": "No fue posible generar la respuesta. Intenta nuevamente."
+        }), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
