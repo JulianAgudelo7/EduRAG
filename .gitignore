@@ -23,3 +23,5 @@ uploads/
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+# Base de datos local de conversaciones
+instance/
