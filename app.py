@@ -1,4 +1,3 @@
-
 import os
 import uuid
 import json
@@ -20,9 +19,9 @@ from backend.vector_database import add_document_pages
 from backend.answer_generator import generate_answer
 
 
-# =========================
-# CONFIGURACION DE FLASK
-# =========================
+# ==========================================
+# CONFIGURACIÓN DE FLASK
+# ==========================================
 
 app = Flask(__name__)
 
@@ -37,7 +36,7 @@ ALLOWED_EXTENSIONS = {"pdf"}
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
 
-# Base de datos SQLite
+# Configuración de SQLite
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///chats.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -46,13 +45,16 @@ db = SQLAlchemy(app)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-# =========================
+# ==========================================
 # MODELOS DE BASE DE DATOS
-# =========================
+# ==========================================
 
 class Conversation(db.Model):
 
-    id = db.Column(db.String(36), primary_key=True)
+    id = db.Column(
+        db.String(36),
+        primary_key=True
+    )
 
     title = db.Column(
         db.String(200),
@@ -76,7 +78,10 @@ class Conversation(db.Model):
 
 class Message(db.Model):
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
 
     conversation_id = db.Column(
         db.String(36),
@@ -84,9 +89,15 @@ class Message(db.Model):
         nullable=False
     )
 
-    role = db.Column(db.String(20), nullable=False)
+    role = db.Column(
+        db.String(20),
+        nullable=False
+    )
 
-    content = db.Column(db.Text, nullable=False)
+    content = db.Column(
+        db.Text,
+        nullable=False
+    )
 
     sources_json = db.Column(
         db.Text,
@@ -95,14 +106,14 @@ class Message(db.Model):
     )
 
 
-# Crear tablas
+# Crear tablas si no existen
 with app.app_context():
     db.create_all()
 
 
-# =========================
+# ==========================================
 # FUNCIONES AUXILIARES
-# =========================
+# ==========================================
 
 def allowed_file(filename):
 
@@ -115,16 +126,13 @@ def allowed_file(filename):
 
 def get_conversation_history(conversation):
 
-    history = []
-
-    for message in conversation.messages:
-
-        history.append({
+    return [
+        {
             "role": message.role,
             "content": message.content
-        })
-
-    return history
+        }
+        for message in conversation.messages
+    ]
 
 
 def save_message(conversation, role, content, sources=None):
@@ -139,8 +147,9 @@ def save_message(conversation, role, content, sources=None):
         )
     )
 
+    # Agregar el mensaje a la transacción.
+    # El commit se realiza desde la ruta correspondiente.
     db.session.add(message)
-    db.session.commit()
 
     return message
 
@@ -151,12 +160,36 @@ def get_messages_with_sources(conversation):
 
     for message in conversation.messages:
 
+        try:
+
+            sources = json.loads(
+                message.sources_json or "[]"
+            )
+
+            if not isinstance(sources, list):
+                sources = []
+
+            sources = [
+                source
+                for source in sources
+                if isinstance(source, dict)
+                and source.get("filename")
+                and source.get("page") is not None
+            ]
+
+        except (json.JSONDecodeError, TypeError):
+
+            app.logger.warning(
+                "Fuentes inválidas en el mensaje %s",
+                message.id
+            )
+
+            sources = []
+
         history.append({
             "role": message.role,
             "content": message.content,
-            "sources": json.loads(
-                message.sources_json or "[]"
-            )
+            "sources": sources
         })
 
     return history
@@ -167,15 +200,14 @@ def generate_conversation_title(question):
     title = question.strip()
 
     if len(title) > 45:
-
         title = title[:45].rstrip() + "..."
 
     return title or "Nueva conversación"
 
 
-# =========================
-# PAGINA PRINCIPAL
-# =========================
+# ==========================================
+# PÁGINA PRINCIPAL
+# ==========================================
 
 @app.route("/")
 def inicio():
@@ -183,9 +215,9 @@ def inicio():
     return render_template("index.html")
 
 
-# =========================
+# ==========================================
 # CARGAR DOCUMENTOS PDF
-# =========================
+# ==========================================
 
 @app.route("/upload", methods=["POST"])
 def upload_document():
@@ -198,7 +230,7 @@ def upload_document():
 
     file = request.files["document"]
 
-    if file.filename == "":
+    if not file.filename:
 
         flash("Debes seleccionar un archivo.")
 
@@ -239,11 +271,13 @@ def upload_document():
 
             os.remove(file_path)
 
-            flash("No se encontró texto extraíble en el PDF.")
+            flash(
+                "No se encontró texto extraíble en el PDF."
+            )
 
             return redirect(url_for("inicio"))
 
-        # Indexar documento
+        # Indexar documento en ChromaDB
         indexed_pages = add_document_pages(
             filename=filename,
             pages=pages,
@@ -252,11 +286,15 @@ def upload_document():
 
         if indexed_pages == 0:
 
-            flash("No se encontraron páginas para indexar.")
+            os.remove(file_path)
+
+            flash(
+                "No se encontraron fragmentos para indexar."
+            )
 
             return redirect(url_for("inicio"))
 
-        # Estadísticas
+        # Calcular estadísticas
         total_characters = sum(
             len(page["content"])
             for page in pages
@@ -276,119 +314,171 @@ def upload_document():
             extracted_pages=pages
         )
 
-    except Exception as error:
+    except Exception:
 
         app.logger.exception(
-            "Error al procesar el documento"
+            "Error al procesar el documento %s",
+            filename
         )
 
         flash(
-            f"No se pudo procesar el documento: {error}"
+            "No se pudo procesar el documento. "
+            "Comprueba que sea un PDF válido e intenta nuevamente."
         )
 
         return redirect(url_for("inicio"))
 
 
-# =========================
+# ==========================================
 # LISTA DE CONVERSACIONES
-# =========================
+# ==========================================
 
 @app.route("/chat")
 def chat():
 
-    conversations = Conversation.query.order_by(
-        Conversation.created_at.desc()
-    ).all()
+    try:
 
-    # Si no hay conversaciones, crear una
-    if not conversations:
+        conversations = Conversation.query.order_by(
+            Conversation.created_at.desc()
+        ).all()
 
-        return redirect(url_for("new_chat"))
+        # Crear una conversación si no existen
+        if not conversations:
 
-    conversation_id = request.args.get("id")
+            return redirect(url_for("new_chat"))
 
-    # Seleccionar la más reciente
-    if not conversation_id:
+        conversation_id = request.args.get("id")
 
-        conversation_id = conversations[0].id
+        # Seleccionar la conversación más reciente
+        if not conversation_id:
 
-    conversation = db.session.get(
-        Conversation,
-        conversation_id
-    )
+            conversation_id = conversations[0].id
 
-    # Si el ID no existe
-    if conversation is None:
-
-        return redirect(
-            url_for("chat", id=conversations[0].id)
+        conversation = db.session.get(
+            Conversation,
+            conversation_id
         )
 
-    history = get_messages_with_sources(conversation)
+        # Seleccionar una conversación válida
+        if conversation is None:
 
-    return render_template(
-        "chat.html",
-        history=history,
-        conversations=conversations,
-        current_conversation=conversation
-    )
+            return redirect(
+                url_for("chat", id=conversations[0].id)
+            )
+
+        history = get_messages_with_sources(
+            conversation
+        )
+
+        return render_template(
+            "chat.html",
+            history=history,
+            conversations=conversations,
+            current_conversation=conversation
+        )
+
+    except Exception:
+
+        db.session.rollback()
+
+        app.logger.exception(
+            "Error al consultar las conversaciones"
+        )
+
+        flash(
+            "No fue posible cargar las conversaciones. "
+            "Intenta nuevamente."
+        )
+
+        return redirect(url_for("inicio"))
 
 
-# =========================
+# ==========================================
 # NUEVA CONVERSACIÓN
-# =========================
+# ==========================================
 
 @app.route("/new_chat")
 def new_chat():
 
-    conversation = Conversation(
-        id=str(uuid.uuid4()),
-        title="Nueva conversación"
-    )
+    conversation_id = str(uuid.uuid4())
 
-    db.session.add(conversation)
-    db.session.commit()
+    try:
 
-    return redirect(
-        url_for("chat", id=conversation.id)
-    )
-
-
-# =========================
-# ELIMINAR CONVERSACIÓN
-# =========================
-
-@app.route("/delete_chat/<conversation_id>", methods=["POST"])
-def delete_chat(conversation_id):
-
-    conversation = db.session.get(
-        Conversation,
-        conversation_id
-    )
-
-    if conversation is None:
-
-        return redirect(url_for("chat"))
-
-    db.session.delete(conversation)
-    db.session.commit()
-
-    remaining = Conversation.query.order_by(
-        Conversation.created_at.desc()
-    ).first()
-
-    if remaining:
-
-        return redirect(
-            url_for("chat", id=remaining.id)
+        conversation = Conversation(
+            id=conversation_id,
+            title="Nueva conversación"
         )
 
-    return redirect(url_for("new_chat"))
+        db.session.add(conversation)
+        db.session.commit()
+
+    except Exception:
+
+        db.session.rollback()
+
+        app.logger.exception(
+            "Error al crear una conversación"
+        )
+
+        flash(
+            "No fue posible crear una conversación. "
+            "Intenta nuevamente."
+        )
+
+        return redirect(url_for("inicio"))
+
+    return redirect(
+        url_for("chat", id=conversation_id)
+    )
 
 
-# =========================
+# ==========================================
+# ELIMINAR CONVERSACIÓN
+# ==========================================
+
+@app.route(
+    "/delete_chat/<conversation_id>",
+    methods=["POST"]
+)
+def delete_chat(conversation_id):
+
+    try:
+
+        conversation = db.session.get(
+            Conversation,
+            conversation_id
+        )
+
+        if conversation is None:
+
+            return redirect(url_for("chat"))
+
+        # Eliminar conversación y sus mensajes
+        db.session.delete(conversation)
+        db.session.commit()
+
+    except Exception:
+
+        db.session.rollback()
+
+        app.logger.exception(
+            "Error al eliminar la conversación %s",
+            conversation_id
+        )
+
+        flash(
+            "No fue posible eliminar la conversación. "
+            "Intenta nuevamente."
+        )
+
+        return redirect(url_for("inicio"))
+
+    return redirect(url_for("chat"))
+
+
+# ==========================================
 # ENVIAR PREGUNTAS
-# =========================
+# ==========================================
 
 @app.route("/ask", methods=["POST"])
 def ask():
@@ -402,32 +492,116 @@ def ask():
         "conversation_id"
     )
 
+    # Validar datos recibidos
     if not question or not conversation_id:
 
-        return redirect(url_for("chat"))
+        return redirect(
+            url_for("chat", id=conversation_id)
+        )
 
-    conversation = db.session.get(
-        Conversation,
-        conversation_id
-    )
-
-    if conversation is None:
-
-        return redirect(url_for("chat"))
-
-    history = get_conversation_history(conversation)
+    # ======================================
+    # CONSULTAR CONVERSACIÓN E HISTORIAL
+    # ======================================
 
     try:
 
-        # Generar respuesta con historial
+        conversation = db.session.get(
+            Conversation,
+            conversation_id
+        )
+
+        if conversation is None:
+
+            return redirect(url_for("chat"))
+
+        history = get_conversation_history(
+            conversation
+        )
+
+        # Cerrar la transacción de lectura antes
+        # de realizar la consulta externa a Groq.
+        db.session.rollback()
+
+    except Exception:
+
+        db.session.rollback()
+
+        app.logger.exception(
+            "Error al consultar el historial"
+        )
+
+        flash(
+            "No fue posible consultar la conversación."
+        )
+
+        return redirect(url_for("inicio"))
+
+    # ======================================
+    # GENERAR RESPUESTA
+    # ======================================
+
+    try:
+
         result = generate_answer(
             question,
             history=history
         )
 
-        answer = result["answer"]
+        if not isinstance(result, dict):
 
-        sources = result["sources"]
+            raise ValueError(
+                "Formato de respuesta inválido"
+            )
+
+        answer = result.get("answer")
+
+        sources = result.get("sources", [])
+
+        if not isinstance(answer, str) or not answer.strip():
+
+            raise ValueError(
+                "El generador devolvió una respuesta vacía"
+            )
+
+        answer = answer.strip()
+
+        if not isinstance(sources, list):
+
+            sources = []
+
+    except Exception:
+
+        app.logger.exception(
+            "Error al generar la respuesta"
+        )
+
+        answer = (
+            "Ocurrió un error al generar la respuesta. "
+            "Intenta nuevamente en unos instantes."
+        )
+
+        sources = []
+
+    # ======================================
+    # GUARDAR CONVERSACIÓN
+    # ======================================
+
+    try:
+
+        # Consultar nuevamente la conversación
+        # después de generar la respuesta.
+        conversation = db.session.get(
+            Conversation,
+            conversation_id
+        )
+
+        if conversation is None:
+
+            flash(
+                "La conversación ya no está disponible."
+            )
+
+            return redirect(url_for("chat"))
 
         # Guardar pregunta
         save_message(
@@ -436,7 +610,7 @@ def ask():
             question
         )
 
-        # Guardar respuesta
+        # Guardar respuesta y fuentes
         save_message(
             conversation,
             "assistant",
@@ -444,46 +618,41 @@ def ask():
             sources
         )
 
-        # Asignar título
+        # Asignar título automático
         if conversation.title == "Nueva conversación":
 
             conversation.title = generate_conversation_title(
                 question
             )
 
-            db.session.commit()
-
-        return redirect(
-            url_for("chat", id=conversation.id)
-        )
+        # Confirmar todos los cambios juntos
+        db.session.commit()
 
     except Exception:
 
+        # Revertir cualquier cambio incompleto
+        db.session.rollback()
+
         app.logger.exception(
-            "Error al generar respuesta"
+            "Error al guardar los mensajes de la conversación %s",
+            conversation_id
         )
 
-        save_message(
-            conversation,
-            "user",
-            question
+        flash(
+            "No fue posible guardar los mensajes. "
+            "Intenta enviar tu pregunta nuevamente."
         )
 
-        save_message(
-            conversation,
-            "assistant",
-            "Ocurrió un error al generar la respuesta. "
-            "Revisa la terminal para conocer el detalle."
-        )
+        return redirect(url_for("inicio"))
 
-        return redirect(
-            url_for("chat", id=conversation.id)
-        )
+    return redirect(
+        url_for("chat", id=conversation_id)
+    )
 
 
-# =========================
-# EJECUCION
-# =========================
+# ==========================================
+# EJECUCIÓN
+# ==========================================
 
 if __name__ == "__main__":
 
