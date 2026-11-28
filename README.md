@@ -407,6 +407,65 @@ individuales de cada pregunta.
 > constituyen una medición directa de la exactitud factual
 > de las respuestas generadas por el LLM.
 
+### Resultados experimentales
+
+La evaluación se realizó el 27 de noviembre de 2026
+utilizando una colección vectorial temporal e independiente,
+con el documento `Guia_LLms_IAR02.pdf` y los parámetros
+actuales del sistema.
+
+| Indicador | Resultado |
+|---|---:|
+| Páginas con texto extraído | 11 |
+| Fragmentos indexados | 10 |
+| Total de preguntas evaluadas | 15 |
+| Preguntas positivas | 12 |
+| Preguntas negativas | 3 |
+| Top-K | 4 |
+| Umbral de distancia | 0.75 |
+| Hit@4 | 100 % |
+| MRR@4 | 0.8611 |
+| Rejection Accuracy | 100 % |
+
+#### Posición del primer resultado relevante
+
+| Posición | Consultas | Porcentaje |
+|---|---:|---:|
+| Primera | 9 | 75 % |
+| Segunda | 2 | 16.67 % |
+| Tercera | 1 | 8.33 % |
+| Cuarta | 0 | 0 % |
+
+#### Evaluación de preguntas negativas
+
+| Pregunta | Distancia | Resultado |
+|---|---:|---|
+| Preparación de un sándwich de pollo | 0.8263 | Rechazada |
+| Precio de un portátil ASUS | 0.8804 | Rechazada |
+| Ganador del campeonato mundial de fútbol | 0.8598 | Rechazada |
+
+#### Análisis de resultados
+
+EduRAG recuperó al menos un fragmento de una página
+esperada entre los cuatro primeros resultados para
+las 12 preguntas positivas.
+
+El 75 % de las consultas positivas obtuvo un resultado
+relevante en la primera posición.
+
+Las tres preguntas negativas superaron el umbral de
+distancia de 0.75 y fueron rechazadas correctamente.
+
+Estos resultados evidencian un desempeño favorable
+del mecanismo de recuperación semántica en el conjunto
+de evaluación seleccionado.
+
+> [!NOTE]
+> Los resultados corresponden a un único documento y
+> 15 preguntas de evaluación. No representan una garantía
+> de exactitud general ni una medición directa de la
+> calidad de las respuestas generadas por el LLM.
+
 ### Prueba interactiva de recuperación
 
 ```bash
